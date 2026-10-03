@@ -1,104 +1,137 @@
 "use client";
+import { useRouter } from "next/navigation";
+import { Check } from "lucide-react";
 import { useState } from "react";
 import { BUILTIN_TOOL_NAMES, DEFAULT_TOOLS, type BuiltinToolName, type Policy } from "@/lib/contracts";
+import { Button, Card } from "../orbit/core";
+import { Checkbox, Input, Radio, Switch, Textarea } from "../orbit/forms";
+import { useToast } from "../orbit/feedback";
+import { RuleCard } from "../orbit/product";
+import { STYLE_RULE } from "./SessionPanel";
 
 const STYLES = [
-  { v: "hint-only", label: "Hint only", help: "Never gives the answer; asks a leading question." },
-  { v: "guided-steps", label: "Guided steps", help: "Breaks the problem into steps; student does the work." },
-  { v: "explain", label: "Explain fully", help: "Explains concepts and worked examples." },
+  { v: "hint-only", label: "Hint only", help: "Never gives the answer. Offers one hint and a leading question." },
+  { v: "guided-steps", label: "Guided steps", help: "Breaks the problem into steps. The student does each one." },
+  { v: "explain", label: "Explain fully", help: "Explains the idea and works a similar example." },
 ] as const;
 
-const toLocal = (iso?: string) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
+const TOOL_HELP: Record<string, string> = {
+  read: "Open class files and the student’s own files",
+  write: "Create files in the student’s workspace",
+  edit: "Change files in the student’s workspace",
+  bash: "Run code in the student’s private sandbox",
+  grep: "Search inside files",
+  glob: "List files",
+  webSearch: "Search the web (sandboxes have no internet by default)",
+  askUserQuestions: "Ask the student multiple-choice questions",
+};
+
+const toLocal = (iso?: string) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "");
 
 export function PolicyEditor({ classId, initial, materials }: { classId: string; initial: Policy; materials: { id: string; name: string }[] }) {
+  const router = useRouter();
+  const toast = useToast();
   const [p, setP] = useState(initial);
-  const [win, setWin] = useState(Boolean(initial.assessmentWindow));
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const set = <K extends keyof Policy>(k: K, v: Policy[K]) => setP((x) => ({ ...x, [k]: v }));
   const enabled = (t: BuiltinToolName) => p.tools[t] ?? DEFAULT_TOOLS[t];
-  const toggle = (list: BuiltinToolName[], t: BuiltinToolName) => (list.includes(t) ? list.filter((x) => x !== t) : [...list, t]);
+  const allowed = BUILTIN_TOOL_NAMES.filter(enabled);
 
   async function save() {
     setSaving(true);
-    setMsg(null);
+    setError("");
     const { version: _v, ...policy } = p;
-    const body = { policy: { ...policy, assessmentWindow: win ? (p.assessmentWindow ?? { startsAt: new Date().toISOString(), style: "hint-only", lockedTools: [], clarifyOnly: true }) : null } };
-    const res = await fetch(`/api/teacher/classes/${classId}/policy`, { method: "PUT", body: JSON.stringify(body) });
+    const res = await fetch(`/api/teacher/classes/${classId}/policy`, { method: "PUT", body: JSON.stringify({ policy: { ...policy, approvalRequired: policy.approvalRequired.filter(enabled) } }) });
     const out = await res.json();
     setSaving(false);
-    setMsg(res.ok ? { ok: true, text: `Saved as version ${out.version}. It applies on each student's next question.` } : { ok: false, text: out.error });
-    if (res.ok) setP((x) => ({ ...x, version: out.version }));
+    if (!res.ok) return setError(out.error ?? "Couldn’t save the rules.");
+    setP((x) => ({ ...x, version: out.version }));
+    toast("Rules saved. They apply from each student’s next question.");
+    router.refresh();
   }
 
   return (
-    <div className="space-y-6">
-      <section className="card grid gap-4 sm:grid-cols-2">
-        <div><label className="label">Policy name</label><input className="input" value={p.name} onChange={(e) => set("name", e.target.value)} /></div>
-        <div><label className="label">Subject</label><input className="input" value={p.subject} onChange={(e) => set("subject", e.target.value)} /></div>
-        <div className="sm:col-span-2"><label className="label">Unit / context</label><input className="input" value={p.unit ?? ""} onChange={(e) => set("unit", e.target.value || undefined)} placeholder="Unit 3: kinematics" /></div>
-      </section>
-
-      <section className="card space-y-2">
-        <h2 className="font-semibold">Tutoring style</h2>
-        {STYLES.map((s) => (
-          <label key={s.v} className="flex items-start gap-2 text-sm">
-            <input type="radio" name="style" checked={p.style === s.v} onChange={() => set("style", s.v)} className="mt-1" />
-            <span><strong>{s.label}</strong> <span className="text-slate-500">{s.help}</span></span>
-          </label>
-        ))}
-        <div><label className="label">Extra guidance (appended after the fixed safety rules)</label><textarea className="input" rows={3} value={p.guidance} onChange={(e) => set("guidance", e.target.value)} /></div>
-      </section>
-
-      <section className="card">
-        <h2 className="mb-2 font-semibold">Tools</h2>
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs uppercase text-slate-500"><th className="py-1">Tool</th><th>Allowed</th><th>Needs my approval</th></tr></thead>
-          <tbody>
-            {BUILTIN_TOOL_NAMES.map((t) => (
-              <tr key={t} className="border-t border-slate-100">
-                <td className="py-1.5 font-mono">{t}{t === "webSearch" && <span className="ml-2 font-sans text-xs text-amber-700">student sandboxes have no internet by default</span>}</td>
-                <td><input type="checkbox" aria-label={`allow ${t}`} checked={enabled(t)} onChange={(e) => set("tools", { ...p.tools, [t]: e.target.checked })} /></td>
-                <td><input type="checkbox" aria-label={`approve ${t}`} disabled={!enabled(t)} checked={p.approvalRequired.includes(t)} onChange={() => set("approvalRequired", toggle(p.approvalRequired, t))} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <section className="card">
-        <h2 className="mb-2 font-semibold">Course materials students can open</h2>
-        {materials.length ? materials.map((m) => (
-          <label key={m.id} className="mr-4 inline-flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={p.materials.includes(m.id)} onChange={() => set("materials", p.materials.includes(m.id) ? p.materials.filter((x) => x !== m.id) : [...p.materials, m.id])} />
-            {m.name}
-          </label>
-        )) : <p className="text-sm text-slate-500">No materials uploaded for this class.</p>}
-      </section>
-
-      <section className="card grid gap-4 sm:grid-cols-3">
-        <div><label className="label">Model</label><input className="input" value={p.model} onChange={(e) => set("model", e.target.value || "default")} /></div>
-        <div><label className="label">Questions per student per day</label><input type="number" min={1} max={500} className="input" value={p.limits.turnsPerDay} onChange={(e) => set("limits", { ...p.limits, turnsPerDay: Number(e.target.value) })} /></div>
-        <div><label className="label">Max tokens per answer</label><input type="number" min={256} className="input" value={p.limits.maxTokensPerTurn} onChange={(e) => set("limits", { ...p.limits, maxTokensPerTurn: Number(e.target.value) })} /></div>
-      </section>
-
-      <section className="card space-y-2">
-        <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={win} onChange={(e) => setWin(e.target.checked)} /> Assessment mode</label>
-        <p className="text-sm text-slate-500">During the window the tutor is locked down: it only clarifies the question, with the tools below.</p>
-        {win && p.assessmentWindow && (
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="flex min-w-0 flex-col gap-4">
+        <Card eyebrow="Class" title="What this class is working on">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className="label">Starts</label><input type="datetime-local" className="input" value={toLocal(p.assessmentWindow.startsAt)} onChange={(e) => set("assessmentWindow", { ...p.assessmentWindow!, startsAt: new Date(e.target.value).toISOString() })} /></div>
-            <div><label className="label">Ends</label><input type="datetime-local" className="input" value={toLocal(p.assessmentWindow.endsAt)} onChange={(e) => set("assessmentWindow", { ...p.assessmentWindow!, endsAt: e.target.value ? new Date(e.target.value).toISOString() : undefined })} /></div>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={p.assessmentWindow.clarifyOnly} onChange={(e) => set("assessmentWindow", { ...p.assessmentWindow!, clarifyOnly: e.target.checked })} /> Clarify the question only (no hints)</label>
+            <Input label="Subject" value={p.subject} onChange={(e) => set("subject", e.target.value)} />
+            <Input label="Unit" value={p.unit ?? ""} onChange={(e) => set("unit", e.target.value || undefined)} placeholder="Unit 3: kinematics" />
           </div>
-        )}
-        {win && !p.assessmentWindow && <button className="btn" onClick={() => set("assessmentWindow", { startsAt: new Date().toISOString(), style: "hint-only", lockedTools: [], clarifyOnly: true })}>Set window</button>}
-      </section>
+        </Card>
 
-      <div className="flex items-center gap-3">
-        <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save policy"}</button>
-        <span className="text-sm text-slate-500">Current version: v{p.version}</span>
-        {msg && <span role="status" className={`text-sm ${msg.ok ? "text-emerald-700" : "text-red-600"}`}>{msg.text}</span>}
+        <Card eyebrow="Behavior" title="How the tutor helps">
+          <div className="flex flex-col gap-2.5">
+            {STYLES.map((s) => <Radio key={s.v} name="style" label={s.label} description={s.help} checked={p.style === s.v} onChange={() => set("style", s.v)} />)}
+          </div>
+          <Textarea mono rows={3} label="Your rule, in your words" value={p.guidance} onChange={(e) => set("guidance", e.target.value)} placeholder="Encourage students to draw a diagram before using any equation." hint="Write it the way you’d say it to a teaching assistant. Tutors get it word for word, after Orbit’s safety rules." />
+        </Card>
+
+        <Card eyebrow="Permissions" title="What the tutor can do">
+          <div className="flex flex-col divide-y divide-[var(--border-1)]">
+            {BUILTIN_TOOL_NAMES.map((t) => (
+              <div key={t} className="flex items-center gap-3 py-2.5">
+                <Switch size="sm" checked={enabled(t)} onChange={(v) => set("tools", { ...p.tools, [t]: v })} ariaLabel={`Allow ${t}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="type-rule text-fg-1">{t}</div>
+                  <div className="type-caption text-fg-3">{TOOL_HELP[t]}</div>
+                </div>
+                <Checkbox
+                  label={<span className="type-caption text-fg-2">Ask me first</span>}
+                  disabled={!enabled(t)}
+                  checked={enabled(t) && p.approvalRequired.includes(t)}
+                  onChange={(v) => set("approvalRequired", v ? [...p.approvalRequired, t] : p.approvalRequired.filter((x) => x !== t))}
+                  ariaLabel={`Ask before ${t}`}
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card eyebrow="Files" title="Class files tutors can read">
+          {materials.length ? (
+            <div className="flex flex-col gap-2">
+              {materials.map((m) => (
+                <Checkbox key={m.id} label={<span className="type-rule">{m.name}</span>} checked={p.materials.includes(m.id)} onChange={(v) => set("materials", v ? [...p.materials, m.id] : p.materials.filter((x) => x !== m.id))} />
+              ))}
+            </div>
+          ) : (
+            <p className="type-body text-fg-3">No files uploaded for this class.</p>
+          )}
+        </Card>
+
+        <Card eyebrow="Limits" title="Model and budget">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Input label="Model" value={p.model} onChange={(e) => set("model", e.target.value || "default")} className="font-mono" />
+            <Input label="Questions per student per day" type="number" min={1} max={500} value={p.limits.turnsPerDay} onChange={(e) => set("limits", { ...p.limits, turnsPerDay: Number(e.target.value) })} />
+            <Input label="Longest answer (tokens)" type="number" min={256} value={p.limits.maxTokensPerTurn} onChange={(e) => set("limits", { ...p.limits, maxTokensPerTurn: Number(e.target.value) })} />
+          </div>
+        </Card>
+
+        <Card eyebrow="Test mode" title="Lock tutors down during a test" actions={<Switch checked={Boolean(p.assessmentWindow)} onChange={(v) => set("assessmentWindow", v ? { startsAt: new Date().toISOString(), style: "hint-only", lockedTools: [], clarifyOnly: true } : null)} ariaLabel="Test mode" />}>
+          <p className="type-body m-0 text-fg-2">While it’s on, tutors only clarify what a question is asking. No hints, no tools.</p>
+          {p.assessmentWindow && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input label="Starts" type="datetime-local" value={toLocal(p.assessmentWindow.startsAt)} onChange={(e) => e.target.value && set("assessmentWindow", { ...p.assessmentWindow!, startsAt: new Date(e.target.value).toISOString() })} />
+              <Input label="Ends" hint="Leave empty to keep it on until you turn it off." type="datetime-local" value={toLocal(p.assessmentWindow.endsAt)} onChange={(e) => set("assessmentWindow", { ...p.assessmentWindow!, endsAt: e.target.value ? new Date(e.target.value).toISOString() : undefined })} />
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="flex flex-col gap-3 xl:sticky xl:top-0">
+        <Card eyebrow="Preview" title="Rules your tutors follow">
+          <div className="flex flex-col gap-2.5">
+            {p.assessmentWindow && <RuleCard kind="mode" rule="Test mode: only clarify the question. No hints, no tools." />}
+            <RuleCard rule={STYLE_RULE[p.style]} />
+            {p.guidance.trim() && <RuleCard rule={p.guidance.trim()} />}
+            <RuleCard kind="permission" rule={allowed.length ? `Can use: ${allowed.join(", ")}.${p.approvalRequired.filter(enabled).length ? ` Asks you first for: ${p.approvalRequired.filter(enabled).join(", ")}.` : ""}` : "No tools."} />
+          </div>
+          <Button full icon={Check} onClick={save} disabled={saving}>{saving ? "Saving…" : "Save rules"}</Button>
+          {error && <p role="alert" className="type-caption m-0 text-danger-ink">{error}</p>}
+          <p className="type-caption m-0 text-fg-3">Version {p.version}. Changes apply from each student’s next question.</p>
+        </Card>
       </div>
     </div>
   );

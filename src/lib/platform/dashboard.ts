@@ -18,6 +18,16 @@ export type Tile = {
   lastActiveAt: string | null;
 };
 
+export type SessionState = "working" | "stuck" | "approval" | "paused" | "offline";
+
+/** Map a tile onto Orbit's fixed session states (priority order matters). */
+export function tileState(t: Pick<Tile, "status" | "pendingApprovals" | "stuck" | "online">): SessionState {
+  if (t.status === "paused") return "paused";
+  if (t.pendingApprovals > 0) return "approval";
+  if (t.stuck) return "stuck";
+  return t.online ? "working" : "offline";
+}
+
 export type Dashboard = {
   tiles: Tile[];
   topics: { term: string; count: number }[];

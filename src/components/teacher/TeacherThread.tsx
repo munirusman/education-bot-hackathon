@@ -16,7 +16,7 @@ const key = (e: E) => `${e.type}:${e.seq}:${e.at}`;
  * same event projection. Live events from the mirror topic are folded in as
  * they arrive, so tokens appear in real time.
  */
-export function TeacherThread({ environmentId, initialEvents }: { environmentId: string; initialEvents: E[] }) {
+export function TeacherThread({ environmentId, initialEvents, studentName, paused }: { environmentId: string; initialEvents: E[]; studentName: string; paused: boolean }) {
   const events = useRef<E[]>(initialEvents);
   const seen = useRef(new Set(initialEvents.map(key)));
   // A refreshed server snapshot replaces the local fold.
@@ -39,9 +39,7 @@ export function TeacherThread({ environmentId, initialEvents }: { environmentId:
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <div className="h-[55vh]">
-        <Thread readOnly emptyHint="This student hasn't asked anything yet." />
-      </div>
+      <Thread readOnly compact paused={paused} studentLabel={studentName} emptyHint={`${studentName} hasn’t asked anything yet.`} />
     </AssistantRuntimeProvider>
   );
 }

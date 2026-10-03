@@ -1,10 +1,25 @@
 import { notFound } from "next/navigation";
+import { Eye } from "lucide-react";
+import type { EffectivePolicy } from "@/lib/contracts";
 import { pageUser } from "@/lib/platform/identity";
 import { getServices } from "@/lib/platform/services";
+import { isToolEnabled, resolveEffectivePolicy } from "@/lib/platform/policy";
 import { buildMessages } from "@/lib/projection";
 import { StudentChat } from "@/components/chat/StudentChat";
+import { StudentShell } from "@/components/student/StudentShell";
+import { Badge, Eyebrow, Tag } from "@/components/orbit/core";
 
 export const dynamic = "force-dynamic";
+
+/** Plain statements of what the tutor will do, derived from the policy it actually runs under. */
+function tutorWill(p: EffectivePolicy, hasFiles: boolean): string[] {
+  const out = [{ "hint-only": "Give hints, not final answers", "guided-steps": "Guide you step by step", explain: "Explain ideas fully" }[p.style]];
+  const gated = (t: "read" | "write" | "bash") => (p.approvalRequired.includes(t) ? " with your teacher’s OK" : "");
+  if (isToolEnabled(p, "read") && hasFiles) out.push(`Read your class files${gated("read")}`);
+  if (isToolEnabled(p, "write")) out.push(`Save notes in your workspace${gated("write")}`);
+  out.push(isToolEnabled(p, "bash") ? `Run code${gated("bash")}` : "Not run code");
+  return out;
+}
 
 export default async function StudentClass({ params }: { params: Promise<{ classId: string }> }) {
   const { classId } = await params;
@@ -14,19 +29,34 @@ export default async function StudentClass({ params }: { params: Promise<{ class
   if (!cls || !(await repo.isEnrolled(classId, user.id))) notFound();
 
   const env = await envService.ensureEnvironment({ classId, studentId: user.id });
-  const messages = buildMessages(await repo.listEvents(env.id), { forStudent: true });
-  const policy = await repo.getActivePolicy(classId);
+  const [events, classes, teacher, classPolicy] = await Promise.all([
+    repo.listEvents(env.id),
+    repo.listClassesForStudent(user.id),
+    repo.getUser(cls.teacherId),
+    repo.getActivePolicy(classId),
+  ]);
+  const row = await repo.getEnvironment(env.id);
+  const policy = resolveEffectivePolicy({ classPolicy, classPolicyId: cls.activePolicyId ?? classId, override: row?.policyOverride ?? null });
+  const files = isToolEnabled(policy, "read") ? (await repo.getMaterials(classId, policy.materials)).map((m) => m.name) : [];
+  const paused = env.status === "paused";
 
   return (
-    <div className="space-y-3">
-      <div>
-        <h1 className="text-xl font-bold">{cls.name}</h1>
-        <p className="text-sm text-slate-500">{policy.subject}{policy.unit ? ` · ${policy.unit}` : ""}</p>
+    <StudentShell student={user.name} classes={classes} activeClassId={classId} classCaption={`${cls.name} · ${teacher?.name ?? "Your teacher"}`} files={files}>
+      <header className="flex h-14 flex-none items-center gap-3 border-b border-line px-7">
+        <h1 className="type-h1 m-0 truncate text-2xl">{policy.unit ?? policy.subject}</h1>
+        <span className="type-caption ml-auto inline-flex flex-none items-center gap-1.5 text-fg-2">
+          <Eye size={14} aria-hidden />
+          Your teacher can see this session
+        </span>
+      </header>
+      <div className="flex flex-none flex-wrap items-center gap-2.5 border-b border-line bg-card px-7 py-2.5">
+        <Eyebrow>Your tutor will</Eyebrow>
+        {tutorWill(policy, files.length > 0).map((t) => <Tag key={t} mono>{t}</Tag>)}
+        {policy.assessmentActive && <Badge tone="teacher">Test mode: your tutor will only clarify questions</Badge>}
       </div>
-      <p className="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-700" role="note">
-        Your teacher can see your conversations with this tutor, including any files it works with. Don't share personal information.
-      </p>
-      <StudentChat key={env.id} environmentId={env.id} initialMessages={messages} paused={env.status === "paused"} />
-    </div>
+      <div className="min-h-0 flex-1">
+        <StudentChat key={env.id} environmentId={env.id} initialMessages={buildMessages(events, { forStudent: true })} paused={paused} />
+      </div>
+    </StudentShell>
   );
 }

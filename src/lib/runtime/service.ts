@@ -187,7 +187,7 @@ export class EnvironmentServiceImpl implements EnvironmentService {
     env = await this.load(env.id);
 
     bus.publish(classTopic(env.classId), { type: "tile", environmentId: env.id });
-    yield (await emit({ type: "turn-start", turnId, prompt: input.prompt, policyVersion: policy.version, model: compiled.model, activeTools: compiled.activeTools, gatedTools: compiled.approvalRequired }))!;
+    yield (await emit({ type: "turn-start", turnId, prompt: input.prompt, policyVersion: policy.version, model: compiled.model, activeTools: compiled.activeTools, gatedTools: compiled.approvalRequired, style: policy.style, assessment: policy.assessmentActive }))!;
 
     const requestApproval = async (req: ApprovalRequest): Promise<ApprovalDecision> => {
       const handler = input.requestApproval;

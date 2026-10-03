@@ -1,6 +1,6 @@
-# Classroom Harness
+# Classroom Harness (Orbit)
 
-A private, sandboxed AI tutor per student. Teachers set the rules, watch every session live, and can step in.
+A private, sandboxed AI tutor per student, branded and styled with the Orbit design system. Teachers set the rules, watch every session live, and can step in.
 Built on Next.js (App Router), assistant-ui, and the AI SDK harness packages (experimental, pinned).
 
 ## Run it
@@ -27,6 +27,15 @@ approvals, notes, pause, override and reset.
 | `src/lib/projection.ts` | Events to AI SDK UI messages: one function feeds the student stream, history, and teacher replay |
 | `src/app/api` | `/api/chat` (student turn), `/api/teacher/**` (actions, SSE mirrors, files, policy) |
 | `src/components` | assistant-ui Thread, Generative UI for tool calls, teacher dashboard, policy editor, intervention panel |
+
+## Design (Orbit)
+
+The UI follows `Orbit Design System/` (read its `readme.md` before changing the UI).
+
+- Tokens are copied into `src/styles/orbit-tokens.css` and exposed to Tailwind in `src/app/globals.css` (`bg-plum-600`, `text-fg-2`, `rounded-md`, `type-h3`, …). Change a token there, not in components.
+- The Orbit components are ported to TypeScript in `src/components/orbit/` (`core`, `forms`, `feedback`, `product`). Fonts are self-hosted via `next/font` and icons come from `lucide-react` (the same Lucide set the system specifies, without the CDN).
+- Layout follows the UI kits: teacher console with a 248px sidebar, a live classroom grid and a 420px session panel; a student tutor with a files sidebar and a 720px chat column.
+- Sun yellow is reserved for the teacher, and the state hues (working, stuck, approval, paused) are used only for session state.
 
 ## How the plan's rules are enforced
 

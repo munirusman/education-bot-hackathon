@@ -1,22 +1,21 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Hanken_Grotesk, IBM_Plex_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 
-export const metadata: Metadata = { title: "Classroom Harness", description: "A private AI tutor for every student, with the teacher in the loop." };
+// Self-hosted at build time, so no request goes to Google Fonts at runtime.
+const hanken = Hanken_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-hanken" });
+const newsreader = Newsreader({ subsets: ["latin"], weight: ["400", "500"], style: ["normal", "italic"], variable: "--font-newsreader" });
+const plex = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-plex" });
+
+export const metadata: Metadata = {
+  title: "Orbit",
+  description: "A private tutor for every student, with the teacher at the center.",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-          <Link href="/" className="font-semibold text-indigo-700">Classroom Harness</Link>
-          <nav className="flex gap-4 text-sm text-slate-600">
-            <Link href="/teacher" className="hover:text-indigo-700">Teacher</Link>
-            <Link href="/student" className="hover:text-indigo-700">Student</Link>
-          </nav>
-        </header>
-        <main className="mx-auto max-w-6xl px-6 py-6">{children}</main>
-      </body>
+    <html lang="en" className={`${hanken.variable} ${newsreader.variable} ${plex.variable}`}>
+      <body className="min-h-screen">{children}</body>
     </html>
   );
 }

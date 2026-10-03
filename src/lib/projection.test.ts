@@ -6,7 +6,7 @@ import { buildMessages, createChunkProjector } from "./projection";
 
 const at = "2026-01-01T00:00:00.000Z";
 const turn: HarnessEvent[] = [
-  { type: "turn-start", seq: 0, at, turnId: "t1", prompt: "How far?", policyVersion: 1, model: "m", activeTools: [], gatedTools: [] },
+  { type: "turn-start", seq: 0, at, turnId: "t1", prompt: "How far?", policyVersion: 1, model: "m", activeTools: [], gatedTools: [], style: "hint-only", assessment: false },
   { type: "tool-call", seq: 1, at, toolCallId: "c1", toolName: "read", input: { file_path: "a.md" }, providerExecuted: true },
   { type: "tool-result", seq: 2, at, toolCallId: "c1", toolName: "read", output: "hi", isError: false },
   { type: "text", seq: 3, at, blockId: "b", delta: "Hel" },
@@ -26,6 +26,7 @@ describe("projection", () => {
     expect(types).toEqual(expect.arrayContaining(["text-start", "text-delta", "text-end", "tool-input-available", "tool-output-available", "data-approval"]));
     expect(types.filter((t) => t === "text-start")).toHaveLength(1);
     expect(types.at(-1)).toBe("finish");
+    expect(types).toContain("data-rule");
   });
 
   it("history folds the same events into a user + assistant message with tool and approval parts", () => {
@@ -36,6 +37,7 @@ describe("projection", () => {
     expect(parts.find((p) => p.type === "dynamic-tool")?.state).toBe("output-available");
     expect(parts.find((p) => p.type === "data-approval")?.data?.state).toBe("denied");
     expect(msgs[2]!.parts[0]).toMatchObject({ type: "data-teacher-note" });
+    expect(parts.at(-1)).toMatchObject({ type: "data-rule", data: { text: "Rule: hints only, no final answers" } });
   });
 
   it("hides audit-only teacher notes from the student", () => {

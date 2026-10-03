@@ -17,7 +17,7 @@
  * FROZEN after day 1.
  */
 import { z } from "zod";
-import { builtinToolNameSchema } from "./policy.ts";
+import { builtinToolNameSchema, tutoringStyleSchema } from "./policy.ts";
 
 /** Everything the app records about one stream position. */
 const eventBase = {
@@ -38,6 +38,9 @@ export const turnStartEventSchema = z.object({
   /** Free-text record of the resolved tool access, for the teacher UI. */
   activeTools: z.array(z.string()),
   gatedTools: z.array(z.string()),
+  /** The style and test-mode lock this turn actually ran under (drives the rule footnote). */
+  style: tutoringStyleSchema.optional(),
+  assessment: z.boolean().default(false),
 });
 
 export const textEventSchema = z.object({

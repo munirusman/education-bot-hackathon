@@ -12,10 +12,21 @@ import type { HarnessEvent } from "@/lib/contracts";
 
 type AnyEvent = HarnessEvent & { turnId?: string };
 
+type TurnStart = Extract<HarnessEvent, { type: "turn-start" }>;
+
+/** Mono footnote describing the rule a turn ran under. States policy, never claims about content. */
+export function ruleFootnote(e: Pick<TurnStart, "style" | "assessment">): string | null {
+  if (e.assessment) return "Test mode · clarify only";
+  if (e.style === "hint-only") return "Rule: hints only, no final answers";
+  if (e.style === "guided-steps") return "Rule: guided steps";
+  return null;
+}
+
 export function createChunkProjector() {
   const open = new Set<string>();
   const openReasoning = new Set<string>();
   let started = false;
+  let rule: string | null = null;
 
   return {
     push(e: HarnessEvent): UIMessageChunk[] {
@@ -23,6 +34,7 @@ export function createChunkProjector() {
       switch (e.type) {
         case "turn-start":
           started = true;
+          rule = ruleFootnote(e);
           out.push({ type: "start" }, { type: "start-step" });
           break;
         case "text":
@@ -72,6 +84,7 @@ export function createChunkProjector() {
           for (const id of openReasoning) out.push({ type: "reasoning-end", id });
           open.clear();
           openReasoning.clear();
+          if (rule && e.stopReason === "complete") out.push({ type: "data-rule", data: { text: rule } } as UIMessageChunk);
           if (started) out.push({ type: "finish-step" }, { type: "finish" });
           break;
         default:
@@ -87,7 +100,7 @@ type Part = Record<string, unknown> & { type: string };
 /** Fold an ordered event log into UI messages (one user + one assistant per turn). */
 export function buildMessages(events: readonly AnyEvent[], opts: { forStudent?: boolean } = {}): UIMessage[] {
   const messages: UIMessage[] = [];
-  let current: { parts: Part[] } | null = null;
+  let current: { parts: Part[]; rule: string | null } | null = null;
 
   const textPart = (id: string, type: "text" | "reasoning") => {
     const parts = current!.parts;
@@ -101,7 +114,7 @@ export function buildMessages(events: readonly AnyEvent[], opts: { forStudent?: 
       case "turn-start": {
         messages.push({ id: `${e.turnId}-u`, role: "user", parts: [{ type: "text", text: e.prompt }] });
         const parts: Part[] = [];
-        current = { parts };
+        current = { parts, rule: ruleFootnote(e) };
         messages.push({ id: `${e.turnId}-a`, role: "assistant", parts: parts as UIMessage["parts"] });
         break;
       }
@@ -143,6 +156,7 @@ export function buildMessages(events: readonly AnyEvent[], opts: { forStudent?: 
           messages.push({ id: e.noteId, role: "assistant", parts: [{ type: "data-teacher-note", data: { text: e.text, teacherName: e.teacherName } }] as UIMessage["parts"] });
         break;
       case "turn-end":
+        if (current?.rule && e.stopReason === "complete") current.parts.push({ type: "data-rule", data: { text: current.rule } });
         current = null;
         break;
       default:

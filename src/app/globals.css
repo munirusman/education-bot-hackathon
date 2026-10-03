@@ -1,11 +1,94 @@
 @import "tailwindcss";
+@import "../styles/orbit-tokens.css";
 
-:root { color-scheme: light; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
-.btn { @apply inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-100 disabled:opacity-50; }
-.btn-primary { @apply border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700; }
-.btn-danger { @apply border-red-600 bg-red-600 text-white hover:bg-red-700; }
-.card { @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm; }
-.input { @apply w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm; }
-.label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500; }
-.badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
+/*
+ * Orbit tokens exposed to Tailwind. Families come from next/font (layout.tsx);
+ * radii and shadows are Orbit's values. Color utilities alias the Orbit CSS
+ * variables, so changing a token in orbit-tokens.css restyles everything.
+ */
+@theme {
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, serif;
+  --font-mono: var(--font-plex), ui-monospace, Menlo, monospace;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --shadow-xs: 0 1px 0 rgba(40, 22, 44, 0.04);
+  --shadow-sm: 0 1px 2px rgba(40, 22, 44, 0.06), 0 0 0 1px rgba(40, 22, 44, 0.04);
+  --shadow-md: 0 4px 12px -2px rgba(40, 22, 44, 0.08), 0 1px 3px rgba(40, 22, 44, 0.06);
+  --shadow-lg: 0 18px 40px -12px rgba(40, 22, 44, 0.22), 0 2px 6px rgba(40, 22, 44, 0.06);
+
+  --ease-orbit: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@theme inline {
+  --color-plum-50: var(--plum-50); --color-plum-100: var(--plum-100); --color-plum-200: var(--plum-200);
+  --color-plum-300: var(--plum-300); --color-plum-400: var(--plum-400); --color-plum-500: var(--plum-500);
+  --color-plum-600: var(--plum-600); --color-plum-700: var(--plum-700); --color-plum-800: var(--plum-800); --color-plum-900: var(--plum-900);
+  --color-sand-0: var(--sand-0); --color-sand-25: var(--sand-25); --color-sand-50: var(--sand-50); --color-sand-100: var(--sand-100);
+  --color-sand-200: var(--sand-200); --color-sand-300: var(--sand-300); --color-sand-400: var(--sand-400); --color-sand-500: var(--sand-500);
+  --color-sand-600: var(--sand-600); --color-sand-700: var(--sand-700); --color-sand-800: var(--sand-800); --color-sand-900: var(--sand-900);
+  --color-sun-100: var(--sun-100); --color-sun-300: var(--sun-300); --color-sun-500: var(--sun-500); --color-sun-700: var(--sun-700);
+
+  --color-app: var(--bg-app);
+  --color-page: var(--surface-page);
+  --color-card: var(--surface-card);
+  --color-sunken: var(--surface-sunken);
+  --color-inverse: var(--surface-inverse);
+  --color-teacher: var(--surface-teacher);
+  --color-fg-1: var(--fg-1);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-line: var(--border-1);
+  --color-line-2: var(--border-2);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-press: var(--accent-press);
+
+  --color-working: var(--state-working); --color-working-bg: var(--state-working-bg); --color-working-ink: var(--state-working-ink);
+  --color-stuck: var(--state-stuck); --color-stuck-bg: var(--state-stuck-bg); --color-stuck-ink: var(--state-stuck-ink);
+  --color-approval: var(--state-approval); --color-approval-bg: var(--state-approval-bg); --color-approval-ink: var(--state-approval-ink);
+  --color-paused: var(--state-paused); --color-paused-bg: var(--state-paused-bg); --color-paused-ink: var(--state-paused-ink);
+  --color-danger: var(--state-danger); --color-danger-bg: var(--state-danger-bg); --color-danger-ink: var(--state-danger-ink);
+}
+
+@layer base {
+  body {
+    font: var(--type-body);
+    color: var(--text-body);
+    background: var(--bg-app);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--plum-200); }
+  :focus-visible { outline: none; box-shadow: var(--ring-focus); }
+}
+
+/* Orbit type roles as utilities. */
+@utility type-h1 { font: var(--type-h1); letter-spacing: var(--ls-display); }
+@utility type-h2 { font: var(--type-h2); }
+@utility type-h3 { font: var(--type-h3); }
+@utility type-body { font: var(--type-body); }
+@utility type-body-lg { font: var(--type-body-lg); }
+@utility type-label { font: var(--type-label); }
+@utility type-caption { font: var(--type-caption); }
+@utility type-rule { font: var(--type-rule); }
+@utility type-eyebrow { font: var(--type-eyebrow); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+
+@utility animate-orbit-pulse { animation: orbit-pulse 1.8s infinite; }
+@utility animate-fade-up { animation: orbit-fade-up var(--dur-base) var(--ease-orbit); }
+
+/* Tutor prose (assistant-ui markdown). Unboxed, 15px, per the chat spec. */
+.tutor-prose { font: var(--type-body-lg); font-size: 15px; color: var(--fg-1); }
+.tutor-prose p { margin: 0 0 0.6em; }
+.tutor-prose p:last-child { margin-bottom: 0; }
+.tutor-prose ol, .tutor-prose ul { margin: 0.4em 0 0.6em; padding-left: 1.4em; }
+.tutor-prose ol { list-style: decimal; }
+.tutor-prose ul { list-style: disc; }
+.tutor-prose li { margin: 0.2em 0; }
+.tutor-prose strong { font-weight: var(--fw-semibold); }
+.tutor-prose code { font: var(--type-rule); font-size: 13px; background: var(--surface-sunken); border-radius: var(--radius-xs); padding: 1px 4px; }
+.tutor-prose pre { font: var(--type-rule); background: var(--surface-sunken); border-radius: var(--radius-sm); padding: 8px 10px; overflow-x: auto; }
