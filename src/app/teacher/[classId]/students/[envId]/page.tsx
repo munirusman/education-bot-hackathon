@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { pageUser } from "@/lib/platform/identity";
+import { pageTeacher } from "@/lib/platform/identity";
 import { getServices } from "@/lib/platform/services";
 import { loadClassView } from "@/lib/platform/class-view";
 import { tileState } from "@/lib/platform/dashboard";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 /** Orbit's drill-in: the classroom grid stays visible with the session in a 420px right panel. */
 export default async function StudentDrillIn({ params }: { params: Promise<{ classId: string; envId: string }> }) {
   const { classId, envId } = await params;
-  const user = await pageUser("teacher");
+  const user = await pageTeacher();
   const services = await getServices();
   const { repo } = services;
   const [cls, env] = await Promise.all([repo.getClass(classId), repo.getEnvironment(envId)]);

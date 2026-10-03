@@ -1,10 +1,10 @@
-import { errorResponse, requireUser } from "@/lib/platform/identity";
+import { errorResponse, requireStudent } from "@/lib/platform/identity";
 import { getServices } from "@/lib/platform/services";
 
 export async function POST(req: Request) {
   try {
-    const user = await requireUser("student");
-    const { code } = (await req.json()) as { code?: string };
+    const { studentId, code } = (await req.json()) as { studentId?: string; code?: string };
+    const user = await requireStudent(studentId ?? "");
     const { repo, env } = await getServices();
     const cls = code ? await repo.getClassByJoinCode(code.trim()) : null;
     if (!cls) return Response.json({ error: "No class has that join code" }, { status: 404 });
