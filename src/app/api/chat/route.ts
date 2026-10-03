@@ -57,6 +57,7 @@ export async function POST(req: Request) {
       // Match by name: class identity is not reliable across Next's module instances.
       const name = (e as Error | undefined)?.name;
       if (name === "EnvironmentPausedError") return new Response("Your teacher has paused this tutor for now.", { status: 423 });
+      if (name === "UsageLimitError") return new Response((e as Error).message, { status: 402 });
       if (name === "EnvironmentLimitError") return new Response((e as Error).message, { status: 429 });
       throw e;
     }

@@ -41,6 +41,24 @@ export type ApprovalRow = {
   status: "pending" | "approved" | "denied";
   reason: string | null;
 };
+export type UsageRow = {
+  id: string;
+  turnId: string;
+  environmentId: string;
+  classId: string;
+  teacherId: string;
+  studentId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  tokenSource: "provider" | "estimate";
+  usageAt: string;
+  syncStatus: "pending" | "sent" | "failed" | "expired";
+  syncAttempts: number;
+  syncError: string | null;
+  syncedAt: string | null;
+};
+
 export type TurnRow = {
   id: string;
   environmentId: string;
@@ -87,6 +105,23 @@ const mapApproval = (r: Row): ApprovalRow => ({
   input: r.input,
   status: r.status,
   reason: r.reason,
+});
+const mapUsage = (r: Row): UsageRow => ({
+  id: r.id,
+  turnId: r.turn_id,
+  environmentId: r.environment_id,
+  classId: r.class_id,
+  teacherId: r.teacher_id,
+  studentId: r.student_id,
+  model: r.model,
+  inputTokens: r.input_tokens,
+  outputTokens: r.output_tokens,
+  tokenSource: r.token_source,
+  usageAt: iso(r.usage_at)!,
+  syncStatus: r.sync_status,
+  syncAttempts: r.sync_attempts,
+  syncError: r.sync_error,
+  syncedAt: iso(r.synced_at),
 });
 const mapTurn = (r: Row): TurnRow => ({
   id: r.id,
@@ -304,6 +339,46 @@ export function createRepo(dbp: Promise<Db> | Db = getDb()) {
         [classId, String(sinceDays)],
       );
       return rows.map((r) => r.prompt);
+    },
+
+    // ---- usage metering (billing) -------------------------------------------
+    /** One record per turn; a repeat insert for the same turn is ignored. */
+    async insertUsage(u: Omit<UsageRow, "syncStatus" | "syncAttempts" | "syncError" | "syncedAt">): Promise<boolean> {
+      const rows = await q(
+        `INSERT INTO usage_records (id,turn_id,environment_id,class_id,teacher_id,student_id,model,input_tokens,output_tokens,token_source,usage_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (turn_id) DO NOTHING RETURNING id`,
+        [u.id, u.turnId, u.environmentId, u.classId, u.teacherId, u.studentId, u.model, u.inputTokens, u.outputTokens, u.tokenSource, u.usageAt],
+      );
+      return rows.length > 0;
+    },
+    async listPendingUsage(limit = 50): Promise<UsageRow[]> {
+      return (await q(`SELECT * FROM usage_records WHERE sync_status='pending' ORDER BY usage_at LIMIT $1`, [limit])).map(mapUsage);
+    },
+    async markUsage(id: string, patch: { status?: UsageRow["syncStatus"]; error?: string | null; attempted?: boolean }) {
+      await q(
+        `UPDATE usage_records SET sync_status=COALESCE($2,sync_status), sync_error=$3,
+           sync_attempts=sync_attempts+$4, synced_at=CASE WHEN $2='sent' THEN now() ELSE synced_at END WHERE id=$1`,
+        [id, patch.status ?? null, patch.error ?? null, patch.attempted ? 1 : 0],
+      );
+    },
+    async usageBetween(teacherId: string, from: Date, to: Date): Promise<UsageRow[]> {
+      return (await q(`SELECT * FROM usage_records WHERE teacher_id=$1 AND usage_at >= $2 AND usage_at < $3 ORDER BY usage_at DESC`, [teacherId, from.toISOString(), to.toISOString()])).map(mapUsage);
+    },
+    /** The Chargebee subscription a teacher switched to, if any (otherwise the env default applies). */
+    async getBillingSubscription(teacherId: string): Promise<string | null> {
+      const [r] = await q(`SELECT subscription_id FROM billing_accounts WHERE teacher_id=$1`, [teacherId]);
+      return (r?.subscription_id as string | undefined) ?? null;
+    },
+    async setBillingSubscription(teacherId: string, subscriptionId: string) {
+      await q(`INSERT INTO billing_accounts (teacher_id, subscription_id) VALUES ($1,$2) ON CONFLICT (teacher_id) DO UPDATE SET subscription_id=$2, updated_at=now()`, [teacherId, subscriptionId]);
+    },
+    async tokensUsedBetween(teacherId: string, from: Date, to: Date): Promise<number> {
+      const [r] = await q(`SELECT COALESCE(SUM(input_tokens + output_tokens),0)::int AS n FROM usage_records WHERE teacher_id=$1 AND usage_at >= $2 AND usage_at < $3`, [teacherId, from.toISOString(), to.toISOString()]);
+      return Number(r?.n ?? 0);
+    },
+    async usageSyncCounts(teacherId: string): Promise<Record<string, number>> {
+      const rows = await q(`SELECT sync_status, count(*)::int AS n FROM usage_records WHERE teacher_id=$1 GROUP BY sync_status`, [teacherId]);
+      return Object.fromEntries(rows.map((r) => [r.sync_status, r.n]));
     },
 
     // ---- teacher actions ----------------------------------------------------

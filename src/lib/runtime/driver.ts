@@ -20,6 +20,8 @@ export type TurnContext = {
   /** Called by the driver whenever it has newer resume state to persist. */
   saveResume: (state: unknown) => Promise<void>;
   abortSignal: AbortSignal;
+  /** Real token counts (and the model actually used) when the provider reports them; billing prefers these over estimates. */
+  reportUsage: (u: { inputTokens: number; outputTokens: number; model?: string }) => void;
 };
 
 /**

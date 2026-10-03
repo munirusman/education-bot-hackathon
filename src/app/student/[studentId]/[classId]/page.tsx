@@ -5,6 +5,7 @@ import { pageStudent } from "@/lib/platform/identity";
 import { getServices } from "@/lib/platform/services";
 import { isToolEnabled, resolveEffectivePolicy } from "@/lib/platform/policy";
 import { buildMessages } from "@/lib/projection";
+import { upgradeMessage, usageStatus } from "@/lib/billing/limit";
 import { StudentChat } from "@/components/chat/StudentChat";
 import { StudentShell } from "@/components/student/StudentShell";
 import { Badge, Eyebrow, Tag } from "@/components/orbit/core";
@@ -39,6 +40,8 @@ export default async function StudentClass({ params }: { params: Promise<{ stude
   const policy = resolveEffectivePolicy({ classPolicy, classPolicyId: cls.activePolicyId ?? classId, override: row?.policyOverride ?? null });
   const files = isToolEnabled(policy, "read") ? (await repo.getMaterials(classId, policy.materials)).map((m) => m.name) : [];
   const paused = env.status === "paused";
+  const gate = await usageStatus(repo, cls.teacherId);
+  const blockedNotice = gate.exceeded && gate.limit !== null ? upgradeMessage(gate.limit) : undefined;
 
   return (
     <StudentShell student={user} classes={classes} activeClassId={classId} classCaption={`${cls.name} · ${teacher?.name ?? "Your teacher"}`} files={files}>
@@ -55,7 +58,7 @@ export default async function StudentClass({ params }: { params: Promise<{ stude
         {policy.assessmentActive && <Badge tone="teacher">Test mode: your tutor will only clarify questions</Badge>}
       </div>
       <div className="min-h-0 flex-1">
-        <StudentChat key={env.id} environmentId={env.id} initialMessages={buildMessages(events, { forStudent: true })} paused={paused} />
+        <StudentChat key={env.id} environmentId={env.id} initialMessages={buildMessages(events, { forStudent: true })} paused={paused} blockedNotice={blockedNotice} />
       </div>
     </StudentShell>
   );

@@ -49,7 +49,7 @@ function AssistantMessage() {
   );
 }
 
-export function Thread({ readOnly = false, studentLabel = "You", emptyHint, paused = false, compact = false }: { readOnly?: boolean; studentLabel?: string; emptyHint?: string; paused?: boolean; compact?: boolean }) {
+export function Thread({ readOnly = false, studentLabel = "You", emptyHint, paused = false, compact = false, notice }: { readOnly?: boolean; studentLabel?: string; emptyHint?: string; paused?: boolean; compact?: boolean; notice?: string }) {
   return (
     <StudentLabel.Provider value={studentLabel}>
       <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
@@ -59,6 +59,9 @@ export function Thread({ readOnly = false, studentLabel = "You", emptyHint, paus
               <p className="type-body py-10 text-center text-fg-3">{emptyHint ?? "Nothing here yet."}</p>
             </ThreadPrimitive.Empty>
             <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
+            {notice && (
+              <p role="alert" className="type-body rounded-md border border-line-2 bg-sun-50 px-4 py-3 text-center text-fg-1">{notice}</p>
+            )}
             {paused && (
               <p className="type-caption text-center text-fg-3">{readOnly ? "You paused this tutor." : "Your teacher paused the tutor."}</p>
             )}
@@ -66,17 +69,17 @@ export function Thread({ readOnly = false, studentLabel = "You", emptyHint, paus
         </ThreadPrimitive.Viewport>
         {!readOnly && (
           <div className="mx-auto w-full max-w-[720px] px-7 pb-6">
-            <ComposerPrimitive.Root className={cx("flex items-end gap-2 rounded-lg border border-line-2 p-2 shadow-sm", paused ? "bg-sand-100" : "bg-card")}>
+            <ComposerPrimitive.Root className={cx("flex items-end gap-2 rounded-lg border border-line-2 p-2 shadow-sm", paused || notice ? "bg-sand-100" : "bg-card")}>
               <ComposerPrimitive.Input
                 rows={1}
                 autoFocus
-                disabled={paused}
-                placeholder={paused ? "Your teacher paused the tutor." : "Ask your tutor…"}
+                disabled={paused || Boolean(notice)}
+                placeholder={paused ? "Your teacher paused the tutor." : notice ? "The tutor is unavailable right now." : "Ask your tutor…"}
                 aria-label="Message your tutor"
                 className="max-h-40 min-w-0 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[15px] text-fg-1 outline-none placeholder:text-fg-3 focus:shadow-none"
               />
               <ThreadPrimitive.If running={false}>
-                <ComposerPrimitive.Send aria-label="Send" title="Send" disabled={paused} className="inline-grid size-9 cursor-pointer place-items-center rounded-sm bg-accent text-white hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45">
+                <ComposerPrimitive.Send aria-label="Send" title="Send" disabled={paused || Boolean(notice)} className="inline-grid size-9 cursor-pointer place-items-center rounded-sm bg-accent text-white hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45">
                   <ArrowUp size={16} aria-hidden />
                 </ComposerPrimitive.Send>
               </ThreadPrimitive.If>
