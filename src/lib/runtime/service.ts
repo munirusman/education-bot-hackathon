@@ -16,6 +16,7 @@ import {
 import { classifyTurn, looksStuck } from "@/lib/platform/classifier.ts";
 import { openState, sealState } from "@/lib/platform/crypto.ts";
 import { newId, type EnvRow, type Repo } from "@/lib/db/repo.ts";
+import type { TurnUsage } from "@/lib/billing/meter.ts";
 import { compileTurn } from "./compile.ts";
 import type { DriverEvent, TurnDriver } from "./driver.ts";
 
@@ -37,7 +38,7 @@ export class EnvironmentServiceImpl implements EnvironmentService {
   private running = new Map<string, AbortController>();
 
   constructor(
-    private readonly deps: { repo: Repo; bus: RealtimeBus; driver: TurnDriver; defaultModel?: string },
+    private readonly deps: { repo: Repo; bus: RealtimeBus; driver: TurnDriver; defaultModel?: string; onUsage?: (u: TurnUsage) => Promise<void> | void },
   ) {}
 
   get mode() {
@@ -196,6 +197,7 @@ export class EnvironmentServiceImpl implements EnvironmentService {
     };
 
     let reply = "";
+    let reported: { inputTokens: number; outputTokens: number; model?: string } | undefined;
     let stopReason: "complete" | "error" | "teacher-pause" = "complete";
     let finishReason = "stop";
     try {
@@ -211,6 +213,9 @@ export class EnvironmentServiceImpl implements EnvironmentService {
         resumeState: this.resumeOf(env),
         saveResume: async (state) => repo.updateEnvironment(env.id, { resumeState: sealState(state) }),
         abortSignal: abort.signal,
+        reportUsage: (u) => {
+          reported = u;
+        },
       })) {
         if (abort.signal.aborted) break;
         if (ev.type === "text") reply += ev.delta;
@@ -229,7 +234,10 @@ export class EnvironmentServiceImpl implements EnvironmentService {
       this.running.delete(env.id);
     }
 
-    const usage = { inputTokens: Math.ceil(input.prompt.length / 4), outputTokens: Math.ceil(reply.length / 4) };
+    // Provider counts when the model reported them; otherwise a rough chars/4 estimate that includes the instructions the model was sent.
+    const usage = reported
+      ? { inputTokens: reported.inputTokens, outputTokens: reported.outputTokens }
+      : { inputTokens: Math.ceil((compiled.instructions.length + input.prompt.length) / 4), outputTokens: Math.ceil(reply.length / 4) };
     yield (await emit({ type: "turn-end", turnId, finishReason, usage, stopReason }))!;
 
     // Post-turn classifier: flags go to the dashboard, never back to the student.
@@ -245,6 +253,14 @@ export class EnvironmentServiceImpl implements EnvironmentService {
       bus.publish(classTopic(env.classId), { type: "flag", environmentId: env.id, flagId, kind: f.kind, urgent: f.kind === "wellbeing" });
     }
     await repo.endTurn(turnId, { stopReason, ...usage, flags: findings.map((f) => f.kind) });
+    // Metering must never break a student's turn.
+    if (this.deps.onUsage && (stopReason !== "error" || reported)) {
+      try {
+        await this.deps.onUsage({ turnId, environmentId: env.id, classId: env.classId, studentId: env.studentId, model: reported?.model ?? compiled.model, ...usage, source: reported ? "provider" : "estimate", at: new Date() });
+      } catch (err) {
+        console.error("[billing] could not record usage", err instanceof Error ? err.message : err);
+      }
+    }
     bus.publish(classTopic(env.classId), { type: "tile", environmentId: env.id });
   }
 }

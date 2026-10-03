@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronsUpDown, LayoutGrid, ScrollText } from "lucide-react";
+import { ChevronsUpDown, LayoutGrid, Receipt, ScrollText } from "lucide-react";
 import { Avatar, cx, Eyebrow, Logo } from "../orbit/core";
 
 export function Sidebar({ teacher, school, classes, activeClassId }: { teacher: string; school?: string; classes: { id: string; name: string }[]; activeClassId?: string }) {
@@ -13,6 +13,7 @@ export function Sidebar({ teacher, school, classes, activeClassId }: { teacher: 
         { href: `/teacher/${activeClassId}/policy`, icon: ScrollText, label: "Tutor rules", active: path.startsWith(`/teacher/${activeClassId}/policy`) },
       ]
     : [];
+  const billing = { href: "/teacher/billing", icon: Receipt, label: "Usage and billing", active: path.startsWith("/teacher/billing") };
   return (
     <aside className="flex w-[var(--sidebar-w)] flex-none flex-col gap-[18px] border-r border-line bg-page px-3 py-[18px]">
       <Link href="/" className="px-2.5" aria-label="Orbit home"><Logo size={26} /></Link>
@@ -33,7 +34,7 @@ export function Sidebar({ teacher, school, classes, activeClassId }: { teacher: 
         </span>
       </div>
       <nav className="flex flex-col gap-0.5" aria-label="Class">
-        {nav.map(({ href, icon: I, label, active }) => (
+        {[...nav, billing].map(({ href, icon: I, label, active }) => (
           <Link key={href} href={href} className={cx("flex h-[34px] items-center gap-2.5 rounded-sm px-2.5 type-label text-sm no-underline", active ? "bg-plum-50 text-plum-700" : "text-fg-2 hover:bg-sand-100 hover:text-fg-1")}>
             <I size={16} aria-hidden />
             {label}

@@ -100,4 +100,23 @@ CREATE TABLE IF NOT EXISTS approvals (
   reason text,
   at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS usage_records (
+  id text PRIMARY KEY,
+  turn_id text NOT NULL UNIQUE,
+  environment_id text NOT NULL REFERENCES environments(id),
+  class_id text NOT NULL,
+  teacher_id text NOT NULL,
+  student_id text NOT NULL,
+  model text NOT NULL,
+  input_tokens int NOT NULL DEFAULT 0,
+  output_tokens int NOT NULL DEFAULT 0,
+  token_source text NOT NULL DEFAULT 'estimate',
+  usage_at timestamptz NOT NULL,
+  sync_status text NOT NULL DEFAULT 'pending',
+  sync_attempts int NOT NULL DEFAULT 0,
+  sync_error text,
+  synced_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS usage_teacher_idx ON usage_records (teacher_id, usage_at);
+CREATE INDEX IF NOT EXISTS usage_sync_idx ON usage_records (sync_status, usage_at);
 `;

@@ -172,4 +172,9 @@ export async function* modelTutor(ctx: TurnContext, history: TutorHistory): Asyn
   const blockId = newId("blk");
   for await (const delta of result.textStream) yield { type: "text", blockId, delta };
   yield { type: "text-end", blockId };
+  // Provider-counted usage, for billing. Some free models don't report it; the service then falls back to an estimate.
+  const usage = await Promise.resolve(result.totalUsage).catch(() => undefined);
+  if (usage && (usage.inputTokens !== undefined || usage.outputTokens !== undefined)) {
+    ctx.reportUsage({ inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0, model: process.env.TUTOR_MODEL });
+  }
 }
