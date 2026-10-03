@@ -15,7 +15,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const { id } = await ctx.params;
     await requireTeacherOfClass(id);
-    const form = await req.formData();
+    const form = await req.formData().catch(() => null);
+    if (!form) return Response.json({ error: "Choose a file to upload." }, { status: 400 });
     const files = form.getAll("file").filter((f): f is File => typeof f !== "string");
     if (!files.length) return Response.json({ error: "Choose a file to upload." }, { status: 400 });
     if (files.length > MAX_FILES) return Response.json({ error: `Upload up to ${MAX_FILES} files at a time.` }, { status: 400 });
