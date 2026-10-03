@@ -1,4 +1,5 @@
-import { createGateway, streamText } from "ai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { streamText } from "ai";
 import { classifyTurn } from "@/lib/platform/classifier.ts";
 import { newId } from "@/lib/db/repo.ts";
 import type { DriverEvent, TurnContext } from "./driver.ts";
@@ -134,11 +135,15 @@ async function* gate(ctx: TurnContext, toolCallId: string, toolName: string, inp
   return decision.approved ? false : (decision.reason ?? true);
 }
 
-/** Optional model-backed tutor (TUTOR_MODEL via the AI Gateway). Same policy compilation. */
+/** Model-backed tutor on the OpenCode Zen account (TUTOR_MODEL + ZEN_API_KEY). Same policy compilation. */
 export async function* modelTutor(ctx: TurnContext, history: TutorHistory): AsyncGenerator<DriverEvent> {
-  const gateway = createGateway({ apiKey: process.env.TUTOR_MODEL_API_KEY });
+  const zen = createOpenAICompatible({
+    name: "opencode-zen",
+    baseURL: process.env.ZEN_BASE_URL ?? "https://opencode.ai/zen/v1",
+    apiKey: process.env.ZEN_API_KEY || "public", // free models accept the anonymous "public" key
+  });
   const result = streamText({
-    model: gateway(process.env.TUTOR_MODEL!),
+    model: zen.chatModel(process.env.TUTOR_MODEL!),
     system: ctx.compiled.instructions,
     messages: [...history.map((h) => ({ role: h.role, content: h.text })), { role: "user" as const, content: ctx.prompt }],
     maxOutputTokens: ctx.compiled.maxTokens,
