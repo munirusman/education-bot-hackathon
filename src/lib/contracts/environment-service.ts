@@ -164,6 +164,18 @@ export class EnvironmentLimitError extends Error {
   }
 }
 
+/** The teacher's plan has no usage left this month; the message tells them to upgrade. */
+export class UsageLimitError extends Error {
+  constructor(
+    public readonly used: number,
+    public readonly limit: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "UsageLimitError";
+  }
+}
+
 export class SandboxAccessError extends Error {
   constructor(message: string) {
     super(message);

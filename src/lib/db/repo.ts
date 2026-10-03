@@ -364,6 +364,18 @@ export function createRepo(dbp: Promise<Db> | Db = getDb()) {
     async usageBetween(teacherId: string, from: Date, to: Date): Promise<UsageRow[]> {
       return (await q(`SELECT * FROM usage_records WHERE teacher_id=$1 AND usage_at >= $2 AND usage_at < $3 ORDER BY usage_at DESC`, [teacherId, from.toISOString(), to.toISOString()])).map(mapUsage);
     },
+    /** The Chargebee subscription a teacher switched to, if any (otherwise the env default applies). */
+    async getBillingSubscription(teacherId: string): Promise<string | null> {
+      const [r] = await q(`SELECT subscription_id FROM billing_accounts WHERE teacher_id=$1`, [teacherId]);
+      return (r?.subscription_id as string | undefined) ?? null;
+    },
+    async setBillingSubscription(teacherId: string, subscriptionId: string) {
+      await q(`INSERT INTO billing_accounts (teacher_id, subscription_id) VALUES ($1,$2) ON CONFLICT (teacher_id) DO UPDATE SET subscription_id=$2, updated_at=now()`, [teacherId, subscriptionId]);
+    },
+    async tokensUsedBetween(teacherId: string, from: Date, to: Date): Promise<number> {
+      const [r] = await q(`SELECT COALESCE(SUM(input_tokens + output_tokens),0)::int AS n FROM usage_records WHERE teacher_id=$1 AND usage_at >= $2 AND usage_at < $3`, [teacherId, from.toISOString(), to.toISOString()]);
+      return Number(r?.n ?? 0);
+    },
     async usageSyncCounts(teacherId: string): Promise<Record<string, number>> {
       const rows = await q(`SELECT sync_status, count(*)::int AS n FROM usage_records WHERE teacher_id=$1 GROUP BY sync_status`, [teacherId]);
       return Object.fromEntries(rows.map((r) => [r.sync_status, r.n]));

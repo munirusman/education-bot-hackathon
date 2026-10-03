@@ -5,6 +5,7 @@ import { EnvironmentServiceImpl } from "@/lib/runtime/service.ts";
 import { createDriver } from "@/lib/runtime/factory.ts";
 import { seedDemo } from "./seed.ts";
 import { flushUsage, recordTurnUsage } from "@/lib/billing/meter.ts";
+import { enforceUsageLimit } from "@/lib/billing/limit.ts";
 import type { RealtimeBus } from "@/lib/contracts";
 
 export type Services = {
@@ -25,6 +26,7 @@ export function getServices(): Promise<Services> {
       repo,
       bus,
       driver: await createDriver(),
+      usageGate: (classId) => enforceUsageLimit(repo, classId),
       onUsage: async (u) => {
         await recordTurnUsage(repo, u);
         // Send to Chargebee in the background; failures stay on the record and are retried.

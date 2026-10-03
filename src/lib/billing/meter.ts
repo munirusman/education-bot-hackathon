@@ -62,7 +62,8 @@ async function run({ repo, cfg = chargebeeConfig(), fetchImpl, now = Date.now }:
       out.expired++;
       continue;
     }
-    const result = await sendUsageEvent(cfg, buildUsageEvent(r, cfg.subscriptionId), fetchImpl);
+    const sub = (await repo.getBillingSubscription(r.teacherId)) ?? cfg.subscriptionId;
+    const result = await sendUsageEvent(cfg, buildUsageEvent(r, sub), fetchImpl);
     if (result.ok) {
       await repo.markUsage(r.id, { status: "sent", error: null, attempted: true });
       out.sent++;

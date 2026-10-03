@@ -38,7 +38,7 @@ export class EnvironmentServiceImpl implements EnvironmentService {
   private running = new Map<string, AbortController>();
 
   constructor(
-    private readonly deps: { repo: Repo; bus: RealtimeBus; driver: TurnDriver; defaultModel?: string; onUsage?: (u: TurnUsage) => Promise<void> | void },
+    private readonly deps: { repo: Repo; bus: RealtimeBus; driver: TurnDriver; defaultModel?: string; onUsage?: (u: TurnUsage) => Promise<void> | void; usageGate?: (classId: string) => Promise<void> },
   ) {}
 
   get mode() {
@@ -154,6 +154,8 @@ export class EnvironmentServiceImpl implements EnvironmentService {
     let env = await this.load(input.environmentId);
     if (env.status === "paused") throw new EnvironmentPausedError(env.id);
     if (this.running.has(env.id)) throw new Error("A turn is already running for this environment.");
+    // Plan usage limit: throws UsageLimitError before any tokens are spent.
+    await this.deps.usageGate?.(env.classId);
 
     // Policy is re-read on every turn by the server, never accepted from the caller.
     const policy = await input.resolvePolicy();

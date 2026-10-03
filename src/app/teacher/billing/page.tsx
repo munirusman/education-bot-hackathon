@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { chargebeeConfig } from "@/lib/billing/chargebee";
+import { activeSubscription, teacherUpgradeMessage, usageStatus } from "@/lib/billing/limit";
 import { MAX_EVENT_AGE_MS, monthRange, summarizeUsage } from "@/lib/billing/meter";
 import { estimateCharge, formatMoney, rateCard } from "@/lib/billing/pricing";
 import { pageTeacher } from "@/lib/platform/identity";
 import { getServices } from "@/lib/platform/services";
 import { Badge, Card, cx } from "@/components/orbit/core";
 import { SyncUsageButton } from "@/components/teacher/SyncUsageButton";
+import { UpgradeButton } from "@/components/teacher/UpgradeButton";
 import { TeacherShell, TopBar } from "@/components/teacher/TeacherShell";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +36,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const rows = await repo.usageBetween(teacher.id, range.from, range.to);
   const card = rateCard();
   const sum = summarizeUsage(rows, { classes: new Map(classes.map((c) => [c.id, c.name])), students: new Map(students.map((s) => [s.id, s.name])) }, card);
+  const plan = await usageStatus(repo, teacher.id);
   const cb = chargebeeConfig();
+  const activeSub = await activeSubscription(repo, teacher.id, cb);
+  const canUpgrade = Boolean(cb?.upgradeSubscriptionId && activeSub !== cb.upgradeSubscriptionId);
+  const upgraded = Boolean(cb?.upgradeSubscriptionId && activeSub === cb.upgradeSubscriptionId);
   const counts = await repo.usageSyncCounts(teacher.id);
   const maxDay = Math.max(1, ...sum.byDay.map((d) => d.tokens));
   const money = (n: number) => formatMoney(n, card.currency);
@@ -75,11 +81,33 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             {sum.totals.estimatedTokens > 0 && ` ${nf.format(sum.totals.estimatedTokens)} of these tokens are estimated because the tutor didn’t report exact counts.`}
           </p>
 
+          {cb && plan.allowanceState === "unavailable" && (
+            <Card eyebrow="Plan" title="Monthly token allowance">
+              <p className="type-body m-0 text-fg-2">Couldn’t read your allowance from Chargebee, so students aren’t being limited right now. Check the connection and reload.</p>
+            </Card>
+          )}
+          {plan.limit !== null && (
+            <Card eyebrow="Plan" title="Monthly token allowance" actions={canUpgrade ? <UpgradeButton label={plan.exceeded ? "Upgrade to keep going" : "Upgrade"} /> : upgraded ? <Badge tone="working" dot pulse={false}>Upgraded plan</Badge> : undefined}>
+              <div className="flex items-baseline justify-between">
+                <span className="type-body text-fg-1" data-testid="plan-usage">{nf.format(plan.used)} of {nf.format(plan.limit)} tokens used this month</span>
+                <Badge tone={plan.exceeded ? "danger" : plan.used / plan.limit >= 0.8 ? "approval" : "working"}>{plan.exceeded ? "Limit reached" : `${nf.format(Math.max(0, plan.limit - plan.used))} left`}</Badge>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-sand-200" role="img" aria-label="Token allowance used">
+                <div className={cx("h-full", plan.exceeded ? "bg-red-500" : "bg-plum-500")} style={{ width: `${Math.min(100, (plan.used / plan.limit) * 100)}%` }} />
+              </div>
+              {plan.exceeded ? (
+                <p className="type-body m-0 text-fg-1" data-testid="upgrade-note">{teacherUpgradeMessage(plan.limit)}</p>
+              ) : (
+                <p className="type-caption m-0 text-fg-3">The allowance comes from your Chargebee plan. Students can ask questions until it runs out. The question that crosses the limit finishes; after that the tutors pause.</p>
+              )}
+            </Card>
+          )}
+
           <Card eyebrow="Billing" title="Chargebee" actions={<SyncUsageButton disabled={!cb} />}>
             {cb ? (
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="working" dot pulse={false}>Connected</Badge>
-                <span className="type-caption text-fg-2">Site <span className="font-mono">{cb.site}</span> · subscription <span className="font-mono">{cb.subscriptionId}</span></span>
+                <span className="type-caption text-fg-2">Site <span className="font-mono">{cb.site}</span> · subscription <span className="font-mono">{activeSub}</span></span>
                 {(counts.pending ?? 0) > 0 && <Badge tone="approval">{counts.pending} waiting to send</Badge>}
                 {(counts.failed ?? 0) > 0 && <Badge tone="danger">{counts.failed} refused</Badge>}
                 {(counts.expired ?? 0) > 0 && <Badge tone="paused">{counts.expired} too old to send</Badge>}

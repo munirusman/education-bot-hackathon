@@ -42,7 +42,7 @@ beforeEach(async () => {
 });
 afterEach(() => new Promise<void>((ok) => server.close(() => ok())));
 
-const cfg = (): ChargebeeConfig => ({ site: "demo", apiKey: "test_SECRETKEY", subscriptionId: "sub-1", ingestOrigin: origin });
+const cfg = (): ChargebeeConfig => ({ site: "demo", apiKey: "test_SECRETKEY", subscriptionId: "sub-1", upgradeSubscriptionId: null, ingestOrigin: origin , apiOrigin: "http://127.0.0.1:1"});
 
 const row = (over: Partial<Parameters<typeof buildUsageEvent>[0]> = {}) => ({
   turnId: "turn_0123456789abcdef", classId: "cls_1", model: "space-bunny-free", inputTokens: 1200, outputTokens: 300, tokenSource: "provider" as const, usageAt: "2026-10-03T12:00:00.000Z", ...over,

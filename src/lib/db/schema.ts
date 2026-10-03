@@ -119,4 +119,9 @@ CREATE TABLE IF NOT EXISTS usage_records (
 );
 CREATE INDEX IF NOT EXISTS usage_teacher_idx ON usage_records (teacher_id, usage_at);
 CREATE INDEX IF NOT EXISTS usage_sync_idx ON usage_records (sync_status, usage_at);
+CREATE TABLE IF NOT EXISTS billing_accounts (
+  teacher_id text PRIMARY KEY,
+  subscription_id text NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 `;
