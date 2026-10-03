@@ -13,7 +13,7 @@ npm run tutor -- hint-only "just give me the answer"   # runtime from the termin
 ```
 
 Everything works with no API keys: the default `local` adapter is a scripted guided-help tutor in a private
-directory sandbox. Open `/teacher` (Ms. Rivera) and `/student` (Ava) in two tabs to see the live mirror,
+directory sandbox. Open `/teacher` (Ms. Rivera) and a student from the home screen (or create a new one) in two tabs to see the live mirror,
 approvals, notes, pause, override and reset.
 
 ## Layout
@@ -48,7 +48,7 @@ The UI follows `Orbit Design System/` (read its `readme.md` before changing the 
 
 ## Known gaps (read before a real classroom)
 
-- **No auth.** Identity comes from the route: `/teacher` is the demo teacher, `/student` the demo student, with no cookie or login (per the MVP scope). Only one demo student is reachable from the UI. Route-level role and ownership checks are real, so adding auth means replacing `requireUser()`. Do not put real student data behind it.
+- **No auth.** Identity comes from the route: `/teacher` is the demo teacher, and for students the id in the URL (`/student/<id>`) is the identity, picked or created on the home screen. There is no cookie, login or password. Route-level role, enrolment and environment-ownership checks are real, but anyone who can reach the app can open any student, so adding auth means replacing the functions in `src/lib/platform/identity.ts`. Do not put real student data behind it.
 - **The `claude-code` harness driver is not exercised by tests.** It type-checks against the real `@ai-sdk/harness` types but has never run against a live sandbox here. Per-turn behaviour (approval continuation, file-change detection, sandbox read-back) needs a live check.
 - **Freestyle sandboxes are not wired.** No Freestyle adapter exists in the installed packages; the harness driver uses the Vercel network sandbox adapter with `networkPolicy: "deny-all"`.
 - **Local mode simulates code execution** rather than running student code on the host.

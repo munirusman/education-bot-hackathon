@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Card } from "./orbit/core";
 import { Input } from "./orbit/forms";
 
-export function JoinClass() {
+export function JoinClass({ studentId }: { studentId: string }) {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -15,9 +15,9 @@ export function JoinClass() {
         onSubmit={async (e) => {
           e.preventDefault();
           setError("");
-          const res = await fetch("/api/student/join", { method: "POST", body: JSON.stringify({ code }) });
+          const res = await fetch("/api/student/join", { method: "POST", body: JSON.stringify({ studentId, code }) });
           if (!res.ok) return setError((await res.json()).error ?? "That code didn’t work.");
-          router.push(`/student/${(await res.json()).classId}`);
+          router.push(`/student/${studentId}/${(await res.json()).classId}`);
         }}
       >
         <div className="w-40">

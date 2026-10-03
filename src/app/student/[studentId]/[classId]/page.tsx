@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Eye } from "lucide-react";
 import type { EffectivePolicy } from "@/lib/contracts";
-import { pageUser } from "@/lib/platform/identity";
+import { pageStudent } from "@/lib/platform/identity";
 import { getServices } from "@/lib/platform/services";
 import { isToolEnabled, resolveEffectivePolicy } from "@/lib/platform/policy";
 import { buildMessages } from "@/lib/projection";
@@ -21,9 +21,9 @@ function tutorWill(p: EffectivePolicy, hasFiles: boolean): string[] {
   return out;
 }
 
-export default async function StudentClass({ params }: { params: Promise<{ classId: string }> }) {
-  const { classId } = await params;
-  const user = await pageUser("student");
+export default async function StudentClass({ params }: { params: Promise<{ studentId: string; classId: string }> }) {
+  const { studentId, classId } = await params;
+  const user = await pageStudent(studentId);
   const { repo, env: envService } = await getServices();
   const cls = await repo.getClass(classId);
   if (!cls || !(await repo.isEnrolled(classId, user.id))) notFound();
@@ -41,7 +41,7 @@ export default async function StudentClass({ params }: { params: Promise<{ class
   const paused = env.status === "paused";
 
   return (
-    <StudentShell student={user.name} classes={classes} activeClassId={classId} classCaption={`${cls.name} · ${teacher?.name ?? "Your teacher"}`} files={files}>
+    <StudentShell student={user} classes={classes} activeClassId={classId} classCaption={`${cls.name} · ${teacher?.name ?? "Your teacher"}`} files={files}>
       <header className="flex h-14 flex-none items-center gap-3 border-b border-line px-7">
         <h1 className="type-h1 m-0 truncate text-2xl">{policy.unit ?? policy.subject}</h1>
         <span className="type-caption ml-auto inline-flex flex-none items-center gap-1.5 text-fg-2">

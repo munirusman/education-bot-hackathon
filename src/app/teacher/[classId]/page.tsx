@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { pageUser } from "@/lib/platform/identity";
+import { pageTeacher } from "@/lib/platform/identity";
 import { getServices } from "@/lib/platform/services";
 import { loadClassView } from "@/lib/platform/class-view";
 import { ClassroomLive } from "@/components/teacher/ClassroomLive";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ClassPage({ params }: { params: Promise<{ classId: string }> }) {
   const { classId } = await params;
-  const user = await pageUser("teacher");
+  const user = await pageTeacher();
   const services = await getServices();
   const cls = await services.repo.getClass(classId);
   if (!cls || cls.teacherId !== user.id) notFound();

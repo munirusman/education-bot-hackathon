@@ -12,7 +12,7 @@ export function StudentShell({
   files,
   children,
 }: {
-  student: string;
+  student: { id: string; name: string };
   classes: { id: string; name: string }[];
   activeClassId?: string;
   classCaption?: string;
@@ -22,13 +22,13 @@ export function StudentShell({
   return (
     <div className="flex h-screen">
       <aside className="flex w-[260px] flex-none flex-col gap-[18px] border-r border-line bg-page px-3.5 py-[18px]">
-        <Link href="/" className="px-2.5" aria-label="Orbit home"><Logo size={26} /></Link>
+        <Link href={`/student/${student.id}`} className="px-2.5" aria-label="Orbit home"><Logo size={26} /></Link>
         <nav className="flex flex-col gap-1" aria-label="Classes">
           <Eyebrow className="px-1.5 pb-1">{classCaption ?? "Your classes"}</Eyebrow>
           {classes.map((c) => {
             const active = c.id === activeClassId;
             return (
-              <Link key={c.id} href={`/student/${c.id}`} className={cx("flex h-[34px] items-center gap-2 rounded-sm px-2 type-label text-sm no-underline", active ? "bg-plum-50 text-plum-700" : "text-fg-2 hover:bg-sand-100 hover:text-fg-1")}>
+              <Link key={c.id} href={`/student/${student.id}/${c.id}`} className={cx("flex h-[34px] items-center gap-2 rounded-sm px-2 type-label text-sm no-underline", active ? "bg-plum-50 text-plum-700" : "text-fg-2 hover:bg-sand-100 hover:text-fg-1")}>
                 <MessageSquare size={15} aria-hidden />
                 {c.name}
               </Link>
@@ -49,10 +49,10 @@ export function StudentShell({
           </div>
         )}
         <div className="mt-auto flex items-center gap-2.5 px-2.5 py-2">
-          <Avatar name={student} size={28} />
-          <div>
-            <div className="type-label">{student}</div>
-            <div className="type-caption text-fg-3">Student · demo account</div>
+          <Avatar name={student.name} size={28} />
+          <div className="min-w-0 flex-1">
+            <div className="type-label truncate">{student.name}</div>
+            <Link href="/student" className="type-caption text-fg-3">Switch student</Link>
           </div>
         </div>
       </aside>
