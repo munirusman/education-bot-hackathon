@@ -350,6 +350,17 @@ export function createRepo(dbp: Promise<Db> | Db = getDb()) {
         storageKey: r.storage_key as string,
       }));
     },
+    async findMaterialByName(classId: string, name: string) {
+      const [r] = await q(`SELECT id FROM materials WHERE class_id=$1 AND name=$2`, [classId, name]);
+      return (r?.id as string | undefined) ?? null;
+    },
+    async updateMaterialContent(id: string, content: string) {
+      await q(`UPDATE materials SET content=$2 WHERE id=$1`, [id, content]);
+    },
+    async deleteMaterial(classId: string, id: string) {
+      const rows = await q(`DELETE FROM materials WHERE class_id=$1 AND id=$2 RETURNING id`, [classId, id]);
+      return rows.length > 0;
+    },
     async getMaterials(classId: string, ids: string[]) {
       if (!ids.length) return [];
       return (await q(`SELECT id,name,content FROM materials WHERE class_id=$1 AND id = ANY($2)`, [classId, ids])).map((r) => ({

@@ -1,9 +1,9 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
-import { useState } from "react";
+import { Check, Trash2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 import { BUILTIN_TOOL_NAMES, DEFAULT_TOOLS, type BuiltinToolName, type Policy } from "@/lib/contracts";
-import { Button, Card } from "../orbit/core";
+import { Button, Card, IconButton } from "../orbit/core";
 import { Checkbox, Input, Radio, Switch, Textarea } from "../orbit/forms";
 import { useToast } from "../orbit/feedback";
 import { RuleCard } from "../orbit/product";
@@ -28,15 +28,48 @@ const TOOL_HELP: Record<string, string> = {
 
 const toLocal = (iso?: string) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "");
 
-export function PolicyEditor({ classId, initial, materials }: { classId: string; initial: Policy; materials: { id: string; name: string }[] }) {
+export function PolicyEditor({ classId, initial, materials: initialMaterials }: { classId: string; initial: Policy; materials: { id: string; name: string }[] }) {
   const router = useRouter();
   const toast = useToast();
   const [p, setP] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [materials, setMaterials] = useState(initialMaterials);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const picker = useRef<HTMLInputElement>(null);
   const set = <K extends keyof Policy>(k: K, v: Policy[K]) => setP((x) => ({ ...x, [k]: v }));
   const enabled = (t: BuiltinToolName) => p.tools[t] ?? DEFAULT_TOOLS[t];
   const allowed = BUILTIN_TOOL_NAMES.filter(enabled);
+
+  async function upload(files: FileList | File[]) {
+    const list = [...files];
+    if (!list.length) return;
+    setUploading(true);
+    setUploadErrors([]);
+    const form = new FormData();
+    for (const f of list) form.append("file", f);
+    const res = await fetch(`/api/teacher/classes/${classId}/materials`, { method: "POST", body: form });
+    const out = await res.json().catch(() => ({ error: "Upload failed." }));
+    setUploading(false);
+    if (picker.current) picker.current.value = "";
+    setUploadErrors(out.errors ?? (out.error ? [out.error] : []));
+    if (!out.saved?.length) return;
+    setMaterials(out.materials);
+    // Newly uploaded files are selected for students; nothing reaches them until the rules are saved.
+    setP((x) => ({ ...x, materials: [...new Set([...x.materials, ...out.saved.map((m: { id: string }) => m.id)])] }));
+    toast(`${out.saved.length === 1 ? out.saved[0].name : `${out.saved.length} files`} uploaded. Save rules to share ${out.saved.length === 1 ? "it" : "them"} with students.`);
+  }
+
+  async function remove(id: string, name: string) {
+    if (!window.confirm(`Delete ${name}? Students will no longer be able to open it.`)) return;
+    const res = await fetch(`/api/teacher/classes/${classId}/materials/${id}`, { method: "DELETE" });
+    if (!res.ok) return toast("Couldn’t delete that file", "warning");
+    setMaterials((await res.json()).materials);
+    setP((x) => ({ ...x, materials: x.materials.filter((m) => m !== id) }));
+    toast(`${name} deleted`);
+  }
 
   async function save() {
     setSaving(true);
@@ -91,14 +124,35 @@ export function PolicyEditor({ classId, initial, materials }: { classId: string;
 
         <Card eyebrow="Files" title="Class files tutors can read">
           {materials.length ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               {materials.map((m) => (
-                <Checkbox key={m.id} label={<span className="type-rule">{m.name}</span>} checked={p.materials.includes(m.id)} onChange={(v) => set("materials", v ? [...p.materials, m.id] : p.materials.filter((x) => x !== m.id))} />
+                <div key={m.id} className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Checkbox label={<span className="type-rule">{m.name}</span>} checked={p.materials.includes(m.id)} onChange={(v) => set("materials", v ? [...p.materials, m.id] : p.materials.filter((x) => x !== m.id))} />
+                  </div>
+                  <IconButton icon={Trash2} label={`Delete ${m.name}`} size="sm" onClick={() => remove(m.id, m.name)} />
+                </div>
               ))}
             </div>
           ) : (
-            <p className="type-body text-fg-3">No files uploaded for this class.</p>
+            <p className="type-body m-0 text-fg-3">No files uploaded for this class yet.</p>
           )}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); upload(e.dataTransfer.files); }}
+            className={`flex flex-col items-center gap-2 rounded-md border border-dashed px-4 py-5 text-center transition-colors ${dragging ? "border-plum-500 bg-plum-50" : "border-line-2 bg-page"}`}
+          >
+            <input ref={picker} type="file" multiple hidden aria-label="Choose files to upload" accept=".md,.txt,.csv,.tsv,.json,.py,.js,.ts,.html,.css,.java,.c,.cpp,.r,.sql,.tex,.xml,.yaml,.yml,text/*" onChange={(e) => e.target.files && upload(e.target.files)} />
+            <Button variant="secondary" size="sm" icon={Upload} disabled={uploading} onClick={() => picker.current?.click()}>{uploading ? "Uploading…" : "Upload files"}</Button>
+            <p className="type-caption m-0 text-fg-3">or drop them here. Text files only (.md, .txt, .csv, .py and similar), up to 256 KB each. Export PDFs and Word files as text first.</p>
+          </div>
+          {uploadErrors.length > 0 && (
+            <ul role="alert" className="type-caption m-0 list-none space-y-1 p-0 text-danger-ink">
+              {uploadErrors.map((e) => <li key={e}>{e}</li>)}
+            </ul>
+          )}
+          <p className="type-caption m-0 text-fg-3">Only the files ticked here are copied into students’ workspaces, and only after you save the rules.</p>
         </Card>
 
         <Card eyebrow="Limits" title="Model and budget">
