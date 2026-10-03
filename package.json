@@ -1,0 +1,40 @@
+{
+  "name": "classroom-harness",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Classroom Harness — a private, sandboxed AI tutor per student, observed and controlled by the teacher.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "tutor": "tsx scripts/tutor-cli.mts"
+  },
+  "dependencies": {
+    "@ai-sdk/harness": "1.0.138",
+    "@ai-sdk/harness-claude-code": "1.0.142",
+    "@ai-sdk/react": "^4.0.130",
+    "@ai-sdk/sandbox-vercel": "1.0.138",
+    "@assistant-ui/react": "^0.15.23",
+    "@assistant-ui/react-ai-sdk": "^1.4.14",
+    "@assistant-ui/react-markdown": "^0.14.18",
+    "@electric-sql/pglite": "^0.5.8",
+    "ai": "^7.0.127",
+    "next": "^16.3.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "engines": { "node": ">=20" }
+}
