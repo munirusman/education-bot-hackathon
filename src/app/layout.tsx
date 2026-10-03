@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk, IBM_Plex_Mono, Newsreader } from "next/font/google";
+import "katex/dist/katex.min.css";
 import "./globals.css";
 
 // Self-hosted at build time, so no request goes to Google Fonts at runtime.

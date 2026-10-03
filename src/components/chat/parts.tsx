@@ -1,6 +1,8 @@
 "use client";
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
 import { Check, Clock, FilePen, FileText, Globe, Search, ShieldCheck, Terminal, X, type LucideIcon } from "lucide-react";
 import { Avatar, cx } from "../orbit/core";
 
@@ -18,6 +20,17 @@ const TOOL: Record<string, [LucideIcon, string]> = {
   glob: [Search, "Listed your files"],
   webSearch: [Globe, "Searched the web"],
 };
+
+// Stable references: react-markdown memoizes on plugin identity.
+const REMARK_PLUGINS = [remarkMath];
+const REHYPE_PLUGINS = [rehypeKatex];
+
+/** Models often write math as \( … \) and \[ … \]; remark-math wants $ and $$. */
+export function normalizeMath(text: string): string {
+  return text
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, m: string) => `\n$$${m}$$\n`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, m: string) => `$${m}$`);
+}
 
 const asText = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v, null, 2));
 
@@ -105,7 +118,7 @@ export function Reasoning({ text }: { text: string }) {
 }
 
 export const assistantParts = {
-  Text: () => <MarkdownTextPrimitive className="tutor-prose" />,
+  Text: () => <MarkdownTextPrimitive className="tutor-prose" remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} preprocess={normalizeMath} />,
   Reasoning: ({ text }: { text: string }) => <Reasoning text={text} />,
   tools: { Fallback: ToolCard },
   data: { by_name: { "file-change": FileChangeCard, approval: ApprovalCard, "teacher-note": TeacherNoteCard, rule: RuleFootnote } },
