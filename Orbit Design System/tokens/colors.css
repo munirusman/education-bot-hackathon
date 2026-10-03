@@ -1,0 +1,26 @@
+:root{
+/* Plum — primary brand ink */
+--plum-50:#f8f3f8;--plum-100:#efe4ef;--plum-200:#dcc7dd;--plum-300:#c2a0c4;--plum-400:#a076a4;--plum-500:#7f5085;--plum-600:#663a6c;--plum-700:#522d57;--plum-800:#3d2242;--plum-900:#28162c;
+/* Sand — warm paper neutrals */
+--sand-0:#ffffff;--sand-25:#fbf9f6;--sand-50:#f5f2ed;--sand-100:#ece7e0;--sand-200:#ddd6cc;--sand-300:#c5bcb0;--sand-400:#9f968a;--sand-500:#7b7267;--sand-600:#5d554c;--sand-700:#443e37;--sand-800:#2e2a25;--sand-900:#1d1a17;
+/* Sun — teacher presence / interventions */
+--sun-100:#fbf0d2;--sun-300:#f1d07a;--sun-500:#e2a92c;--sun-700:#8a5f08;
+/* Session states */
+--green-100:#e2f1e8;--green-500:#3a8a63;--green-700:#24603f;
+--amber-100:#fbebd6;--amber-500:#c7771a;--amber-700:#8b4f0a;
+--blue-100:#e2eaf6;--blue-500:#3d68ad;--blue-700:#284a82;
+--red-100:#f8e2dd;--red-500:#b8442f;--red-700:#87301f;
+
+/* Semantic aliases */
+--bg-app:var(--sand-50);--surface-page:var(--sand-25);--surface-card:var(--sand-0);--surface-sunken:var(--sand-100);--surface-inverse:var(--plum-900);--surface-brand:var(--plum-600);--surface-brand-subtle:var(--plum-50);--surface-teacher:var(--sun-100);
+--fg-1:var(--sand-900);--fg-2:var(--sand-600);--fg-3:var(--sand-500);--fg-inverse:var(--sand-25);--fg-brand:var(--plum-600);--fg-on-brand:#ffffff;
+--text-body:var(--fg-1);--text-muted:var(--fg-2);--text-subtle:var(--fg-3);--text-link:var(--plum-600);--text-link-hover:var(--plum-800);
+--border-1:var(--sand-200);--border-2:var(--sand-300);--border-strong:var(--sand-700);--border-focus:var(--plum-500);
+--accent:var(--plum-600);--accent-hover:var(--plum-700);--accent-press:var(--plum-800);
+--teacher:var(--sun-500);--teacher-ink:var(--sun-700);
+--state-working:var(--green-500);--state-working-bg:var(--green-100);--state-working-ink:var(--green-700);
+--state-stuck:var(--amber-500);--state-stuck-bg:var(--amber-100);--state-stuck-ink:var(--amber-700);
+--state-approval:var(--blue-500);--state-approval-bg:var(--blue-100);--state-approval-ink:var(--blue-700);
+--state-paused:var(--sand-400);--state-paused-bg:var(--sand-100);--state-paused-ink:var(--sand-600);
+--state-danger:var(--red-500);--state-danger-bg:var(--red-100);--state-danger-ink:var(--red-700);
+}

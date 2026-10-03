@@ -1,0 +1,16 @@
+<!-- @dsCard group="Components" viewport="700x330" name="Forms" subtitle="Input, Textarea, Select, Checkbox, Radio, Switch" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{background:var(--surface-page);padding:20px;margin:0}.r{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.c{display:grid;gap:16px}.lb{font:var(--type-eyebrow);letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--fg-3);width:76px;flex:none}</style></head><body><div id="root"></div>
+<script type="text/babel">
+const { Input,Textarea,Select,Checkbox,Radio,Switch } = window.OrbitDesignSystem_5c1997;
+function Demo(){const[m,setM]=React.useState('hints');return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+<div className="c"><Input label="Class name" defaultValue="Period 3 · Algebra I" hint="Visible to students."/><Input icon="search" placeholder="Search students" size="sm"/><Select label="Tutor mode" options={['Guided practice','Test mode','Open help']}/></div>
+<div className="c"><Textarea label="New rule" mono rows={2} placeholder="Give hints, but never reveal the final answer."/>
+<div className="r" style={{gap:16}}><Radio label="Hints only" checked={m==='hints'} onChange={()=>setM('hints')}/><Radio label="Clarify only" checked={m==='clar'} onChange={()=>setM('clar')}/></div>
+<Checkbox label="Read uploaded files" description="Tutor can open files the student attaches." defaultChecked/><div className="r" style={{gap:20}}><Switch defaultChecked label="Rule on"/><Switch label="Test mode"/></div></div></div>}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>
